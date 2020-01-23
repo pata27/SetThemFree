@@ -1,5 +1,5 @@
 # OkaiUnlock
-Arduino code to unlock Okai scooter's
+Arduino code to setThemFree
 
 
 Under WTFPL License 
