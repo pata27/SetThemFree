@@ -1,8 +1,6 @@
 //Importing librairies
 #include <Arduino.h>
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_PN532.h>
+
 #include <FastCRC.h>
 #include <CapacitiveSensor.h>
 
@@ -11,11 +9,8 @@ FastCRC8 CRC8;
 //Variables can be change to activate or desactivate some options
 
 bool powerCutdown = false;
-bool capacitiveSen = false;
+bool capacitiveSen = true;
 bool button = true;
-bool NFCEn = false;
-
-byte uidok[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; //put the uid of your nfc card here if you plan to use one (4bytes for a mifare classic, 7 for an mifare ultralight)
 
 bool Turbo = 1; //1 for on, 0 for off
 bool seconddigit = 1; //Still unknown function
@@ -34,10 +29,7 @@ int buzzer = A0;
 int ledPin = 13;
 int buttonPin = 3;
 int powerLoss = A4;
-#define PN532_SCK  (5)
-#define PN532_MOSI (6)
-#define PN532_SS   (7)
-#define PN532_MISO (8)
+
 CapacitiveSensor capSens = CapacitiveSensor(10, 11);
 
 
@@ -49,7 +41,6 @@ int debounceTime = 20;  //Time of debouncing, valid for button and capacitive se
 int debounceCapacitive = 0; //Used to debounce the capacitive sensor
 int counter = 0;  //Used to count 500 loops (of 1ms) before sending trame to the scooter
 bool change; //Used to bypass the counter if any changes in the 4th bytes have been done, to be send to the scooter as quick as possible
-bool nfcok = false; //used to see if the correct NFC card has already been scaned if nfc is used
 
 int forth;  //Decimal value of the 4th byte
 byte code[6] = {0xA6, 0x12, 0x02};  //Trame send to unlock the scooter, the 3 other bytes are added later on the code
@@ -63,63 +54,10 @@ void setup() {
     pinMode(buttonPin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(buttonPin), ISR_button, CHANGE); //Interupt is used to see if the button is pressed (if button used)
   }
-
-  Adafruit_PN532 nfc(PN532_SCK, PN532_MISO, PN532_MOSI, PN532_SS); //Declaration of the NFC module (even if not used
-  nfc.begin();
-  if (NFCEn == true) {
-    uint32_t versiondata = nfc.getFirmwareVersion(); //Try to get firmware version of the NFC reader
-    if (! versiondata) { //If no nfc reader seen and NFC was wanted make an error code with the led and go to while(1)
-      digitalWrite(ledPin, HIGH);
-      delay(200);
-      digitalWrite(ledPin, LOW);
-      delay(200);
-      digitalWrite(ledPin, HIGH);
-      delay(200);
-      digitalWrite(ledPin, LOW);
-      delay(200);
-      digitalWrite(ledPin, HIGH);
-      delay(200);
-      digitalWrite(ledPin, LOW);
-      delay(200);
-      digitalWrite(ledPin, HIGH);
-      while (1);
-    }
-  }
-  if (NFCEn == true) {
-    nfc.setPassiveActivationRetries(0xFF); //Still NFC shitty init
-  }
-  if (NFCEn == true) {
-    nfc.SAMConfig();
-  }
   tone(buzzer, 440, 40); //Make a bip with the buzzer at startup (if beeper wired)
-  if (NFCEn == true) { //if nfc enable
-    while (nfcok == false) { //read NFC tags until the right tag has been found
-      boolean success;
-      uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };
-      uint8_t uidLength;
-      success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
-      if (success) {
-        bool same = true;
-        for (int i = 0; i < sizeof(uid); i++) { //Compare the array of the scan tag to the one known
-          if (uid[i] != uidok[i]) {
-            same = false; //if one value of the array is not corresponding, put this to false
-          }
-        }
-        if (same == true) { //If one value of the array was false, this will be false too, otherwise, it will allow to get out of the while loop
-          nfcok = true;
-        }
-        delay(1000); //Wait for the next tag scan
-      }
-      else
-      {
-        // PN532 probably timed out waiting for a card
-      }
-    }
-  }
 }
 
 void loop() {
-  long start = millis();
   long pressed = 0;
   if (capacitiveSen == true) { //Pretty explicit
     capacitive_routine();
@@ -130,7 +68,7 @@ void loop() {
   if (powerCutdown == true) {
     power_routine();
   }
-  if ((NFCEn == false || (NFCEn == true && nfcok == true)) && (counter == 500 || change == true)) { // If No nfc and 500ms passed or a changed made; or if nfc, correct tag was previously scan and 500ms or a change. (For future use of a locking functions, otherwise no need to check is tag was ok as if it was not, was still locked in the while condition)
+  if (counter == 500 || change == true) { // If 500ms passed or a changed made
     Serial.write(code, sizeof(code)); //Send the trame to the scooter
     counter = 0; //Reset the time counter
     change = false; // Reset of the change value
