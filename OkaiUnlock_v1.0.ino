@@ -21,16 +21,17 @@ bool Light = 0; //1 for on, 0 for off
 bool LightBlink = 0; //1 for on, 0 for off
 bool ESCOn = 1; //1 for on, 0 for off
 int SpeedLimit = 255; //Beetwen 0 and 255
+int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 //Do not change variables after that if you don't know what you're doing
 
 
 //Pin definitions for externals things
 int buzzer = A0;
 int ledPin = 13;
-int buttonPin = 3;
+int buttonPin = 2;
 int powerLoss = A4;
 
-CapacitiveSensor capSens = CapacitiveSensor(10, 11);
+CapacitiveSensor capSens = CapacitiveSensor(4, 6);
 
 
 //Program variables
@@ -157,7 +158,7 @@ void capacitive_routine()
       tone(buzzer, 440, 40);
     }
   }
-  if (pressed > 999) { //Still debouncing
+  if (pressed > 200) { //Still debouncing
     debounceCapacitive++;
   }
   else
