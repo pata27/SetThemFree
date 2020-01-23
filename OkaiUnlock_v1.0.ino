@@ -158,7 +158,7 @@ void capacitive_routine()
       tone(buzzer, 440, 40);
     }
   }
-  if (pressed > 200) { //Still debouncing
+  if (pressed > sensivity) { //Still debouncing
     debounceCapacitive++;
   }
   else
