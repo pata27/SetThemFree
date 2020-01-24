@@ -1,7 +1,6 @@
 //Importing librairies
 #include <Arduino.h>
 #include <FastCRC.h>
-#include <CapacitiveSensor.h>
 
 FastCRC8 CRC8;
 
@@ -31,6 +30,7 @@ const int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 #define POWERLOSS A4
 
 #ifdef CAPACITIV
+#include <CapacitiveSensor.h>
 CapacitiveSensor capSens = CapacitiveSensor(4, 6);
 #endif
 
