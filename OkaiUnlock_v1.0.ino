@@ -9,7 +9,7 @@ FastCRC8 CRC8;
 //Variables can be change to activate or desactivate some options
 
 bool powerCutdown = false;
-bool capacitiveSen = true;
+bool capacitiveSen = false;
 bool button = true;
 
 bool Turbo = 1; //1 for on, 0 for off
@@ -36,12 +36,13 @@ CapacitiveSensor capSens = CapacitiveSensor(4, 6);
 
 //Program variables
 int lastButtonState = 1; //Used to record the last button state
-long unsigned int lastPress;  //Used to debounce the button
 volatile int buttonFlag; //Use in the interup for the button
 int debounceTime = 20;  //Time of debouncing, valid for button and capacitive sensor
 int debounceCapacitive = 0; //Used to debounce the capacitive sensor
+int debounceButton = 0;
 int counter = 0;  //Used to count 500 loops (of 1ms) before sending trame to the scooter
 bool change; //Used to bypass the counter if any changes in the 4th bytes have been done, to be send to the scooter as quick as possible
+int speeddef = SpeedLimit;
 
 int forth;  //Decimal value of the 4th byte
 byte code[6] = {0xA6, 0x12, 0x02};  //Trame send to unlock the scooter, the 3 other bytes are added later on the code
@@ -113,26 +114,16 @@ void calculateforth() {
 
 void button_routine()
 {
-  if (((millis() - lastPress) > debounceTime && buttonFlag)) //Debouncing the button
-  {
-    lastPress = millis();   //update lastPress
-    if (digitalRead(buttonPin) == 0 && lastButtonState == 1)   //if button is pressed and was released last change
-    {
-      Light = !Light; //Change the state of the Light variable
-      calculateforth(); //calculate the 4th byte with the new value and beeping acordingly to the state
-      if (Light == 1) {
-        tone(buzzer, 880, 40);
-      } else {
-        tone(buzzer, 440, 40);
-      }
-      lastButtonState = 0;    //record the lastButtonState
+  if (digitalRead(buttonPin) == LOW) { //Still debouncing
+    debounceCapacitive++;
+    if (debounceButton == 600) {
+      longPress();
     }
-
-    else if (digitalRead(buttonPin) == 1 && lastButtonState == 0)   //if button is not pressed, and was pressed last change
-    {
-      lastButtonState = 1;    //record the lastButtonState
+  } else {
+    if (debounceButton > debounceTime) {
+      shortPress();
     }
-    buttonFlag = 0;
+    debounceButton = 0;
   }
 }
 
@@ -147,22 +138,16 @@ void power_routine()
 
 void capacitive_routine()
 {
-
   long pressed =  capSens.capacitiveSensor(30); //Read the value of the capacitive sensor
-  if (debounceCapacitive == debounceTime) { //Debouncing
-    Light = !Light; //Same as button, changing state and beeping
-    calculateforth();
-    if (Light == 1) {
-      tone(buzzer, 880, 40);
-    } else {
-      tone(buzzer, 440, 40);
-    }
-  }
   if (pressed > sensivity) { //Still debouncing
     debounceCapacitive++;
-  }
-  else
-  {
+    if (debounceCapacitive == 600) {
+      longPress();
+    }
+  } else {
+    if (debounceCapacitive > debounceTime) {
+      shortPress();
+    }
     debounceCapacitive = 0;
   }
 }
@@ -172,3 +157,30 @@ void ISR_button() //Put the flag to one if button changed state
   buttonFlag = 1;
 }
 
+void longPress() {
+  Turbo = !Turbo; //Toogle turbo
+  fastAcceleration = !fastAcceleration;
+  if (SpeedLimit == speeddef) { //if speed is alredy what wanted, put it to 20
+    SpeedLimit = 20;
+    calculateforth();
+    tone(buzzer, 440, 40);
+    delay(60);
+    tone(buzzer, 440, 40);
+  } else { //Otherwise, put it to defined
+    SpeedLimit = speeddef;
+    calculateforth();
+    tone(buzzer, 880, 40);
+    delay(60);
+    tone(buzzer, 880, 40);
+  }
+}
+
+void shortPress() {
+  Light = !Light; //Same as button, changing state and beeping
+  calculateforth();
+  if (Light == 1) {
+    tone(buzzer, 880, 40);
+  } else {
+    tone(buzzer, 440, 40);
+  }
+}
