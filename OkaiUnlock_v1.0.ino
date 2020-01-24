@@ -2,15 +2,22 @@
 #include <Arduino.h>
 
 #include <FastCRC.h>
-#include <CapacitiveSensor.h>
 
 FastCRC8 CRC8;
 
 //Variables can be change to activate or desactivate some options
 
+<<<<<<< Updated upstream
 bool powerCutdown = false;
 bool capacitiveSen = false;
 bool button = true;
+=======
+#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
+#define BUTTON  //put double slash in front off this line to turn off, if not, will be on
+//#define CAPACITIV   //put double slash in front off this line to turn off, if not, will be on
+#define NFCBOARD
+const byte rightUid[] = {0x00, 0x00, 0x00, 0x00};
+>>>>>>> Stashed changes
 
 bool Turbo = 1; //1 for on, 0 for off
 bool seconddigit = 1; //Still unknown function
@@ -21,9 +28,14 @@ bool Light = 0; //1 for on, 0 for off
 bool LightBlink = 0; //1 for on, 0 for off
 bool ESCOn = 1; //1 for on, 0 for off
 int SpeedLimit = 255; //Beetwen 0 and 255
+<<<<<<< Updated upstream
 int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 //Do not change variables after that if you don't know what you're doing
+=======
+const int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
+>>>>>>> Stashed changes
 
+//Do not change variables after that if you don't know what you're doing
 
 //Pin definitions for externals things
 int buzzer = A0;
@@ -31,8 +43,28 @@ int ledPin = 13;
 int buttonPin = 2;
 int powerLoss = A4;
 
+<<<<<<< Updated upstream
+=======
+#ifdef CAPACITIV
+#include <CapacitiveSensor.h>
+>>>>>>> Stashed changes
 CapacitiveSensor capSens = CapacitiveSensor(4, 6);
 
+<<<<<<< Updated upstream
+=======
+#ifdef NFCBOARD
+#include <PN5180.h>
+#include <PN5180ISO15693.h>
+#define PN5180_NSS  10
+#define PN5180_BUSY 9
+#define PN5180_RST  7
+PN5180ISO15693 nfc(PN5180_NSS, PN5180_BUSY, PN5180_RST);
+#endif
+
+#if defined(CAPACITIV) && defined(BUTTON)
+#warning "Two similar types of inputs at the same time ?"
+#endif
+>>>>>>> Stashed changes
 
 //Program variables
 int lastButtonState = 1; //Used to record the last button state
@@ -51,12 +83,65 @@ byte bye[] = {0xA6, 0x12, 0x02, 0x00, 0x00, 0xDF};  //Trame send to lock the sco
 void setup() {
   Serial.begin(9600); //Initialize the serial communication with the scooter
   calculateforth(); //Calculate the 4th byte depending on the options choosed
+<<<<<<< Updated upstream
   pinMode(ledPin, OUTPUT);
   if (button == true) {
     pinMode(buttonPin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(buttonPin), ISR_button, CHANGE); //Interupt is used to see if the button is pressed (if button used)
   }
   tone(buzzer, 440, 40); //Make a bip with the buzzer at startup (if beeper wired)
+=======
+  pinMode(LEDPIN, OUTPUT);
+#ifdef BUTTON
+  pinMode(BUTTONPIN, INPUT_PULLUP);
+#endif
+  tone(BUZZER, 440, 40); //Make a bip with the buzzer at startup (if beeper wired)
+#ifdef NFCBOARD
+  nfc.begin();
+  nfc.reset();
+  uint8_t productVersion[2];
+  nfc.readEEprom(PRODUCT_VERSION, productVersion, sizeof(productVersion));
+  if (0xff == productVersion[1]) { // if product version 255, the initialization failed
+    tone(BUZZER, 220, 200);
+    delay(400);
+    tone(BUZZER, 220, 200);
+    delay(400);
+    tone(BUZZER, 220, 200);
+    while (1);
+  }
+  uint8_t firmwareVersion[2];
+  nfc.readEEprom(FIRMWARE_VERSION, firmwareVersion, sizeof(firmwareVersion));
+  uint8_t eepromVersion[2];
+  nfc.readEEprom(EEPROM_VERSION, eepromVersion, sizeof(eepromVersion));
+  nfc.setupRF();
+  uint32_t loopCnt = 0;
+  bool errorFlag = false;
+  bool uidIsOk = false;
+  uint8_t uid[8];
+  
+  while (uidIsOk == false) {
+    uidIsOk == true;
+    for (int i = 0;  i < sizeof(uid); i++)
+    {
+      if ( rightUid[i] != uid[i] )
+      {
+        break;
+      }
+    }
+    if (errorFlag) {
+      uint32_t irqStatus = nfc.getIRQStatus();
+      nfc.reset();
+      nfc.setupRF();
+      errorFlag = false;
+    }
+    ISO15693ErrorCode rc = nfc.getInventory(uid);
+    if (ISO15693_EC_OK != rc) {
+      errorFlag = true;
+      return;
+    }
+  }
+#endif
+>>>>>>> Stashed changes
 }
 
 void loop() {
