@@ -1,6 +1,5 @@
 //Importing librairies
 #include <Arduino.h>
-
 #include <FastCRC.h>
 #include <CapacitiveSensor.h>
 
@@ -8,9 +7,9 @@ FastCRC8 CRC8;
 
 //Variables can be change to activate or desactivate some options
 
-bool powerCutdown = false;
-bool capacitiveSen = false;
-bool button = true;
+#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
+#define BUTTON  //put double slash in front off this line to turn off, if not, will be on
+//#define CAPACITIV   //put double slash in front off this line to turn off, if not, will be on
 
 bool Turbo = 1; //1 for on, 0 for off
 bool seconddigit = 1; //Still unknown function
@@ -21,18 +20,23 @@ bool Light = 0; //1 for on, 0 for off
 bool LightBlink = 0; //1 for on, 0 for off
 bool ESCOn = 1; //1 for on, 0 for off
 int SpeedLimit = 255; //Beetwen 0 and 255
-int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
+const int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 //Do not change variables after that if you don't know what you're doing
 
 
 //Pin definitions for externals things
-int buzzer = A0;
-int ledPin = 13;
-int buttonPin = 2;
-int powerLoss = A4;
+#define BUZZER A0
+#define LEDPIN 13
+#define BUTTONPIN 2
+#define POWERLOSS A4
 
+#ifdef CAPACITIV
 CapacitiveSensor capSens = CapacitiveSensor(4, 6);
+#endif
 
+#if defined(CAPACITIV) && defined(BUTTON)
+#warning "Two similar types of inputs at the same time ?"
+#endif
 
 //Program variables
 int lastButtonState = 1; //Used to record the last button state
@@ -51,25 +55,24 @@ byte bye[] = {0xA6, 0x12, 0x02, 0x00, 0x00, 0xDF};  //Trame send to lock the sco
 void setup() {
   Serial.begin(9600); //Initialize the serial communication with the scooter
   calculateforth(); //Calculate the 4th byte depending on the options choosed
-  pinMode(ledPin, OUTPUT);
-  if (button == true) {
-    pinMode(buttonPin, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(buttonPin), ISR_button, CHANGE); //Interupt is used to see if the button is pressed (if button used)
-  }
-  tone(buzzer, 440, 40); //Make a bip with the buzzer at startup (if beeper wired)
+  pinMode(LEDPIN, OUTPUT);
+#ifdef BUTTON
+  pinMode(BUTTONPIN, INPUT_PULLUP);
+#endif
+  tone(BUZZER, 440, 40); //Make a bip with the buzzer at startup (if beeper wired)
 }
 
 void loop() {
   long pressed = 0;
-  if (capacitiveSen == true) { //Pretty explicit
-    capacitive_routine();
-  }
-  if (button == true) {
-    button_routine();
-  }
-  if (powerCutdown == true) {
-    power_routine();
-  }
+#ifdef CAPACITIV
+  capacitive_routine();
+#endif
+#ifdef BUTTON
+  button_routine();
+#endif
+#ifdef POWERSENS
+  power_routine();
+#endif
   if (counter == 500 || change == true) { // If 500ms passed or a changed made
     Serial.write(code, sizeof(code)); //Send the trame to the scooter
     counter = 0; //Reset the time counter
@@ -112,9 +115,10 @@ void calculateforth() {
   change = true; //Allowing to bypass the 500ms counter so that the change is done as quick as possible
 }
 
+#ifdef BUTTON
 void button_routine()
 {
-  if (digitalRead(buttonPin) == LOW) { //Still debouncing
+  if (digitalRead(BUTTONPIN) == LOW) { //Still debouncing
     debounceCapacitive++;
     if (debounceButton == 600) {
       longPress();
@@ -126,16 +130,20 @@ void button_routine()
     debounceButton = 0;
   }
 }
+#endif
 
+#ifdef POWERSENS
 void power_routine()
 {
-  if (analogRead(powerLoss) >= 1023) { //If the power is going down on the arduino, the cap (4.5V) that usaly give 980 at reeding will overflow the input, causing it to read the max value
+  if (analogRead(POWERLOSS) >= 1023) { //If the power is going down on the arduino, the cap (4.5V) that usaly give 980 at reeding will overflow the input, causing it to read the max value
     Serial.write(bye, sizeof(bye)); //Sending the locking sequence
-    digitalWrite(ledPin, HIGH); //Light up the led, just for fun, and to finish drawing the caps down
+    digitalWrite(LEDPIN, HIGH); //Light up the led, just for fun, and to finish drawing the caps down
     while (true) {} //Go to sleep good boy
   }
 }
+#endif
 
+#ifdef CAPACITIV
 void capacitive_routine()
 {
   long pressed =  capSens.capacitiveSensor(30); //Read the value of the capacitive sensor
@@ -151,11 +159,7 @@ void capacitive_routine()
     debounceCapacitive = 0;
   }
 }
-
-void ISR_button() //Put the flag to one if button changed state
-{
-  buttonFlag = 1;
-}
+#endif
 
 void longPress() {
   Turbo = !Turbo; //Toogle turbo
@@ -163,15 +167,15 @@ void longPress() {
   if (SpeedLimit == speeddef) { //if speed is alredy what wanted, put it to 20
     SpeedLimit = 20;
     calculateforth();
-    tone(buzzer, 440, 40);
+    tone(BUZZER, 440, 40);
     delay(60);
-    tone(buzzer, 440, 40);
+    tone(BUZZER, 440, 40);
   } else { //Otherwise, put it to defined
     SpeedLimit = speeddef;
     calculateforth();
-    tone(buzzer, 880, 40);
+    tone(BUZZER, 880, 40);
     delay(60);
-    tone(buzzer, 880, 40);
+    tone(BUZZER, 880, 40);
   }
 }
 
@@ -179,8 +183,8 @@ void shortPress() {
   Light = !Light; //Same as button, changing state and beeping
   calculateforth();
   if (Light == 1) {
-    tone(buzzer, 880, 40);
+    tone(BUZZER, 880, 40);
   } else {
-    tone(buzzer, 440, 40);
+    tone(BUZZER, 440, 40);
   }
 }
