@@ -6,7 +6,7 @@ FastCRC8 CRC8;
 
 //Variables can be change to activate or desactivate some options
 
-#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
+//#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
 #define BUTTON  //put double slash in front off this line to turn off, if not, will be on
 //#define CAPACITIV   //put double slash in front off this line to turn off, if not, will be on
 
@@ -119,7 +119,7 @@ void calculateforth() {
 void button_routine()
 {
   if (digitalRead(BUTTONPIN) == LOW) { //Still debouncing
-    debounceCapacitive++;
+    debounceButton++;
     if (debounceButton == 600) {
       longPress();
     }
