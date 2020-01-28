@@ -6,10 +6,16 @@ FastCRC8 CRC8;
 
 //Variables can be change to activate or desactivate some options
 
-//#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
+#define VOI1 //can be define as VOI1, VOI2 or BIRDZERO
+
+
+#define POWERSENS //put double slash in front off this line to turn off, if not, will be on
+#if defined(VOI2) || defined(BIRDZERO)
 #define BUTTON  //put double slash in front off this line to turn off, if not, will be on
 //#define CAPACITIV   //put double slash in front off this line to turn off, if not, will be on
+#endif
 
+#if defined(VOI2) || defined(BIRDZERO)
 bool Turbo = 1; //1 for on, 0 for off
 bool seconddigit = 1; //Still unknown function
 bool fastAcceleration = 1; //1 for on, 0 for off
@@ -19,6 +25,8 @@ bool Light = 0; //1 for on, 0 for off
 bool LightBlink = 0; //1 for on, 0 for off
 bool ESCOn = 1; //1 for on, 0 for off
 int SpeedLimit = 255; //Beetwen 0 and 255
+#endif
+
 const int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 //Do not change variables after that if you don't know what you're doing
 
@@ -34,6 +42,10 @@ const int sensivity = 200; //To ajust the sensivity of the capacitive Sensor
 CapacitiveSensor capSens = CapacitiveSensor(4, 6);
 #endif
 
+//Checks if options are OK
+#if !defined(VOI2) && !defined(VOI1) && !defined(BIRDZERO)
+#error "No scooter type defined or incorrect type defined"
+#endif
 #if defined(CAPACITIV) && defined(BUTTON)
 #warning "Two similar types of inputs at the same time ?"
 #endif
@@ -46,15 +58,24 @@ int debounceCapacitive = 0; //Used to debounce the capacitive sensor
 int debounceButton = 0;
 int counter = 0;  //Used to count 500 loops (of 1ms) before sending trame to the scooter
 bool change; //Used to bypass the counter if any changes in the 4th bytes have been done, to be send to the scooter as quick as possible
+
+#if defined(VOI2) || defined(BIRDZERO)
 int speeddef = SpeedLimit;
 
 int forth;  //Decimal value of the 4th byte
 byte code[6] = {0xA6, 0x12, 0x02};  //Trame send to unlock the scooter, the 3 other bytes are added later on the code
 byte bye[] = {0xA6, 0x12, 0x02, 0x00, 0x00, 0xDF};  //Trame send to lock the scooter if powerdown sensor is used, avoid 20s of latency between turn off and actual shutdown
+#endif
+#ifdef VOI1
+byte code[9] = {0x60, 0x03, 0x01, 0xE1, 0x00, 0x01, 0xF1, 0xDD, 0xB0};
+byte bye[9] = {0x60, 0x03, 0x01, 0xE1, 0x00, 0x01, 0xF0, 0x1D, 0x71};
+#endif
 
 void setup() {
   Serial.begin(9600); //Initialize the serial communication with the scooter
+  #if defined(VOI2) || defined(BIRDZERO)
   calculateforth(); //Calculate the 4th byte depending on the options choosed
+  #endif
   pinMode(LEDPIN, OUTPUT);
 #ifdef BUTTON
   pinMode(BUTTONPIN, INPUT_PULLUP);
@@ -64,10 +85,10 @@ void setup() {
 
 void loop() {
   long pressed = 0;
-#ifdef CAPACITIV
+#if defined(CAPACITIV) && (defined(VOI2) || defined(BIRDZERO))
   capacitive_routine();
 #endif
-#ifdef BUTTON
+#if defined(BUTTON) && (defined(VOI2) || defined(BIRDZERO))
   button_routine();
 #endif
 #ifdef POWERSENS
@@ -83,6 +104,7 @@ void loop() {
 }
 
 
+#if defined(VOI2) || defined(BIRDZERO)
 void calculateforth() {
   forth = 0; //Calculation of the value of the 4th byte
   if (Turbo == 1) {
@@ -114,6 +136,7 @@ void calculateforth() {
   code[5] = CRC8.maxim(code, 5);
   change = true; //Allowing to bypass the 500ms counter so that the change is done as quick as possible
 }
+#endif
 
 #ifdef BUTTON
 void button_routine()
@@ -161,6 +184,8 @@ void capacitive_routine()
 }
 #endif
 
+
+#if (defined(BUTTON) || defined(CAPACITIV)) && (defined(VOI2) || defined(BIRDZERO))
 void longPress() {
   Turbo = !Turbo; //Toogle turbo
   fastAcceleration = !fastAcceleration;
@@ -188,3 +213,4 @@ void shortPress() {
     tone(BUZZER, 440, 40);
   }
 }
+#endif
